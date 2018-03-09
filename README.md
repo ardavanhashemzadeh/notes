@@ -8,3 +8,6 @@
 2) Keep-Alive enabled
 3) NAT-Traversal enabled
 4) Dead Peer Detection Enabled at 30 second intervals
+
+# Lorex hardcoded backdoor
+root/519070
