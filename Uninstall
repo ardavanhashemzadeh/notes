@@ -1,0 +1,9 @@
+@ECHO OFF
+REM Ardavan Hashemzadeh
+REM AS an admin run:
+REM wmic product where "name like '%'" get name | sort > uninstall.list
+REM notepad uninstall.list
+REM Edit the file and remove everything you'd like to keep
+pause
+for /F "tokens=*" %%A in (uninstall.list) do echo wmic product where name="%%A" call uninstall >> uninstall.bat
+uninstall.bat
