@@ -2,4 +2,4 @@ Create HelpDesk group and add user to it, make it a member of stuff
 Create and link GPO
 Computer>policies>administrative templates>system>remote assistance>solicitedRA enabled
 Computer>policies>administrative templates>system>remote assistance>offerRA enabled, add group here
-Allow windir\sys32\msra.exe,raserver.exe,svchost.exe through the wall of fire
+Allow port 135 and %windir%\sys32\msra.exe,raserver.exe,svchost.exe through the wall of fire
