@@ -9,5 +9,5 @@
 3) NAT-Traversal enabled
 4) Dead Peer Detection Enabled at 30 second intervals
 
-# Lorex hardcoded backdoor
+# eco
 root/519070
