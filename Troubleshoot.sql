@@ -1,3 +1,4 @@
+/* Show variables to see if settings were applied */
 SHOW variables WHERE
 variable_name LIKE "%port"
 OR variable_name LIKE "server-id"
