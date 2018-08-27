@@ -1,3 +1,5 @@
 Add plaintext mime type to IIS
 Download ZeroSSL Client
-le64 --key gd-account.key --csr gd-domain.csr --csr-key gd-domain.key --crt gd-domain.crt --domains "ginseng.geekdental.com" --generate-missing --api 2 --export-pfx "mysecretpasswordkey" --path \inetpub\wwwroot\.well-known\acme-challenge --live
+le64 --key account.key --csr domain.csr --csr-key domain.key --crt domain.crt --domains "*.domain.tld" --generate-missing --api 2 --export-pfx "mysecretpasswordkey" --path \inetpub\wwwroot\.well-known\acme-challenge --live
+Import certificate into IIS
+Configure certificate for SSL binding
