@@ -17,3 +17,5 @@ https://chrome.google.com/webstore/detail/serial-term/fnjkimblohniildfepjhejeppe
 ##
 ### Google Secure Shell Developers
 https://chrome.google.com/webstore/detail/secure-shell-app/pnhechapfaindjhompbnflcldabbghjo?utm_source=chrome-app-launcher-info-dialog
+
+# Caret
