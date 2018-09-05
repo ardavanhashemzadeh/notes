@@ -1,0 +1,23 @@
+From https://github.com/libapps/libapps-mirror/blob/master/nassh/doc/faq.txt#L460:
+
+
+  If you know the index of the offending host entry (it's usually reported
+  by ssh if the connection fails) you can open the JavaScript console and
+
+
+  type...
+
+     term_.command.removeKnownHostByIndex(index)
+
+
+
+  Replace index with the numeric, one-based host index.
+
+
+
+  If you don't know the index, or you'd like to clear all known hosts,
+
+  type...
+
+
+     term_.command.removeAllKnownHosts()
