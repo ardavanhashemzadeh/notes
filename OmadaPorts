@@ -1,0 +1,12 @@
+Q4: Which ports does EAP Controller use?
+
+A:
+8043 (TCP) for https
+8088 (TCP) for http
+27001 (UDP) for controller discovery
+27002 (TCP) for controller searching
+27017 (TCP) for mongo DB server
+29810 (UDP) for EAP discovery
+29811 (TCP) for EAP management
+29812 (TCP) for EAP adoption
+29813 (TCP) for EAP upgrading
