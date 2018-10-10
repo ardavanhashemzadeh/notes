@@ -1,0 +1,1 @@
+Create scheduled task to start the binary as an administrator at startup. Ensure noted firewall ports are open to the required IPs/subnets.
