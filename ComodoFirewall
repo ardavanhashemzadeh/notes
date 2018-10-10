@@ -1,0 +1,2 @@
+The priorities of rules are as displayed graphically (application rules are parsed before global rules...)
+Custom settings only work when in "Custom Ruleset" mode (duh). Safe mode ignores custom rules.
