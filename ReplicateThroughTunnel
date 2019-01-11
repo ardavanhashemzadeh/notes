@@ -1,0 +1,111 @@
+https://www.digitalocean.com/community/tutorials/how-to-secure-mysql-replication-using-ssh-on-a-vps    
+    
+    
+    
+    
+    
+    jesin
+Jesin A
+All commands in red must be replaced with actual values used in your environment.
+
+Prelude
+Configuring MySQL replication leaves port 3306 open to the Internet and data between the replication servers is not encrypted. Using SSH tunneling MySQL replication data can be transferred through the SSH connection. This method doesn't need any additional ports to be opened in the firewall. For this article:
+
+The master IP is 1.1.1.1
+The slave IP is 2.2.2.2
+Commands to be entered in the master are marked (master) and commands for slave are marked (slave).
+
+It is assumed that you've read this article on MySQL replication.
+
+Step 1: Setup SSH Tunneling
+Create a user and assign a password. This user will be used to create the SSH tunnel: (master)
+
+root@mysql-master:~# useradd -d /home/tunneluser -m tunneluser
+root@mysql-master:~# passwd tunneluser
+The tunneluser must be allowed to connect only from the slave server so it must be entered in the /etc/ssh/sshd_config file as an allowed user. (master)
+
+root@mysql-master:~# nano /etc/ssh/sshd_config
+Since allowed users are being defined, users not in this list will be denied access, so add the administrative users who will use SSH to login to this VPS. (master)
+
+AllowUsers root alice bob tunneluser@2.2.2.2
+Restart the SSH server: (master)
+
+root@mysql-master:~# service ssh restart
+The steps to generate a SSH key are mentioned in this article but I'll repeat the commands here. (slave)
+
+[root@mysql-slave ~]# ssh-keygen
+Sample output:
+
+[root@mysql-slave ~]# ssh-keygen
+Generating public/private rsa key pair.
+Enter file in which to save the key (/root/.ssh/id_rsa):
+Enter passphrase (empty for no passphrase):
+Enter same passphrase again:
+Your identification has been saved in /root/.ssh/id_rsa.
+Your public key has been saved in /root/.ssh/id_rsa.pub.
+The key fingerprint is:
+5d:db:9c:50:e8:b2:88:18:de:78:5f:ed:83:14:47:d7 root@mysql-slave
+The key's randomart image is:
++--[ RSA 2048]----+
+|             ... |
+|            o.. E|
+|           oo.   |
+|    .    .o.o= . |
+|   . = .S..*. +  |
+|    + + . + .    |
+|     . . o o     |
+|        . . o    |
+|             .   |
++-----------------+
+Do NOT enter a passphrase because this key will be used to automatically establish a SSH tunnel which will not be possible if it contains a passphrase. Copy the public key to the master server. (slave)
+
+[root@mysql-slave ~]# ssh-copy-id tunneluser@1.1.1.1
+Sample output:
+
+[root@mysql-slave ~]# ssh-copy-id tunneluser@1.1.1.1
+The authenticity of host '1.1.1.1 (1.1.1.1)' can't be established.
+RSA key fingerprint is 3f:33:0c:73:bd:da:51:b9:45:2e:d7:2e:00:47:33:17.
+Are you sure you want to continue connecting (yes/no)? yes
+Warning: Permanently added '1.1.1.1' (RSA) to the list of known hosts.
+tunneluser@1.1.1.1's password:
+Now try logging into the machine, with "ssh 'tunneluser@1.1.1.1'", and check in:
+
+  ~/.ssh/authorized_keys
+
+to make sure we haven't added extra keys that you weren't expecting.
+The tunneluser user will be used only for tunneling and not for administration so change the shell to nologin and remove the password. (master)
+
+usermod -s /sbin/nologin tunneluser
+passwd -d tunneluser
+Debian and Ubuntu users replace /sbin/nologin with /usr/sbin/nologin.
+
+Create a SSH tunnel using the following command. (slave)
+
+ssh -L 33061:localhost:3306 tunneluser@1.1.1.1 -f -N
+The tunnel has been created, so accessing port 33061 at localhost will connect the slave to the master via SSH. The -f parameter runs this command in the background and the -N parameter means "Do not execute a command" since the tunneluser has a nologin shell.
+
+Step 2: MySQL Configuration Changes
+This section mentions only the changes in the steps outlined in this article on MySQL replication.All things to be changed are mentioned in orange. If the my.cnf file was edited to listen on the public IP address change it back to localhost.
+
+(master) and (slave)
+root@mysql-master:~# nano /etc/mysql/my.cnf
+The following line:
+
+bind-address	= 1.1.1.1
+will be changed to the localhost IP address:
+
+bind-address	= 127.0.0.1
+Change the permissions of slave_user to login only from localhost. (master)
+
+root@mysql-master:~# mysql -u root -p
+mysql>GRANT REPLICATION SLAVE ON *.* TO 'slave_user'@'localhost' IDENTIFIED BY 'password';
+The CHANGE MASTER query entered previously pointed to the public IP address of the Master server and didn't specify a port number. The following query will change that. (slave)
+
+root@mysql-slave:~# mysql -u root -p
+mysql>STOP SLAVE;
+mysql>CHANGE MASTER TO MASTER_HOST='127.0.0.1',MASTER_USER='slave_user', MASTER_PASSWORD='password', MASTER_PORT=33061, MASTER_LOG_FILE='mysql-bin.000001', MASTER_LOG_POS=107;
+mysql>START SLAVE;
+Connectivity can be tested from the slave using the following command: (slave)
+
+mysql -h 127.0.0.1 -u slave_user -P 33061 -p
+Please do not use localhost with the -h parameter as MySQL will login locally with the default port number.
