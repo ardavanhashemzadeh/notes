@@ -1,4 +1,20 @@
 # notes
+
+# SSH Port Forarding
+
+Access a remote resource on a local port
+ssh -L LOCALPORT:RESOURCEHOST:RESOURCEPORT user@sshserver
+
+Remote server listens on a port and forwards traffic to a local port
+ssh -R LOCALBINDADDR:LOCALPORT:REMOTEBINDADDR:REMOTEPORT user@sshserver
+
+Local Socks proxy forwards traffic through remote ssh server
+ssh -D PORTNUMBER -f -C -q -N
+f: Fork process to the background
+C: Compress
+q: Quet mode
+N: No command
+
 # Potential Alternatives to LogMeIn
 1) DWService: Information is scarce
 2) InstaTech: Interesting opensource project
