@@ -17,6 +17,12 @@ C: Compress
 q: Quet mode
 N: No command
 
+# Forgot to screen
+Open another session and start screen then reptyr the process
+
+# Quickly itterate over some files in bash and do something
+for file in /var/backups/*2019*; do echo $file; done
+
 # Potential Alternatives to LogMeIn
 1) DWService: Information is scarce
 2) InstaTech: Interesting opensource project
