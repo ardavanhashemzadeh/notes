@@ -6,11 +6,12 @@
 
 ssh -L LOCALPORT:RESOURCEHOST:RESOURCEPORT user@sshserver
 
-Remote server listens on a port and forwards traffic to a local port
+## Remote server listens on a port and forwards traffic to a local port
 ssh -R LOCALBINDADDR:LOCALPORT:REMOTEBINDADDR:REMOTEPORT user@sshserver
 
-Local Socks proxy forwards traffic through remote ssh server
+## Local Socks proxy forwards traffic through remote ssh server
 ssh -D PORTNUMBER -f -C -q -N
+
 f: Fork process to the background
 C: Compress
 q: Quet mode
