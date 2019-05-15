@@ -1,6 +1,6 @@
 # notes
 
-# Windows preview licence expiring resulting in repetetive reboots
+# Windows preview license expiring resulting in repetetive reboots
 HKLM/SYSTEM/CurrentControlSet/Services/sppsvc
 You need to set value 4 for Start dword and reboot.
 Source: https://superuser.com/questions/933754/why-does-windows-10-shut-down-hourly-with-initiated-power-off-on-behalf-of-nt-a
