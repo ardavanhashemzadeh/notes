@@ -1,4 +1,6 @@
 # notes
+# Rename windows machine using wmic
+WMIC computersystem where caption='current_pc_name' rename new_pc_name
 
 # Quiet windows upgrade one liner
 start /wait \\server\share\Windows10\setup.exe /Quiet /compat IgnoreWarning /auto upgrade /migratedrivers all /dynamicupdate enable /showoobe none
