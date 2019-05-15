@@ -1,5 +1,8 @@
 # notes
 
+# Quiet windows upgrade one liner
+start /wait \\server\share\Windows10\setup.exe /Quiet /compat IgnoreWarning /auto upgrade /migratedrivers all /dynamicupdate enable /showoobe none
+
 # Windows preview license expiring resulting in repetetive reboots
 HKLM/SYSTEM/CurrentControlSet/Services/sppsvc
 You need to set value 4 for Start dword and reboot.
