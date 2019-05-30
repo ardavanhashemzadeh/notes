@@ -1,4 +1,8 @@
 # notes
+
+# MySQL CREATE VIEW
+When UNIONing multiple SELECTs don't try to ORDER BY until the end
+
 # Rename windows machine using wmic
 WMIC computersystem where caption='current_pc_name' rename new_pc_name
 
