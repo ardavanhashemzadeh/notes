@@ -1,0 +1,454 @@
+https://www.vultr.com/docs/create-an-html-5-rdp-ssh-frontend-using-guacamole-on-ubuntu-16-04-lts
+
+Create an HTML 5 RDP/SSH Frontend Using Guacamole on Ubuntu 16.04 LTS
+Published on: Tue, Oct 24, 2017 at 3:50 pm EST
+Linux Guides
+Security
+Server Apps
+System Admin
+Ubuntu
+Introduction
+The goal of this tutorial is to get rid of the public SSH and public RDP connections. By placing this all behind a very convenient HTML5 client, we can add a layer of security for accessing our cloud.
+
+Guacamole also logs any remote access, so unauthorized access becomes much more traceable.
+
+Note: For Let's encrypt (option B) we need a domain name. If you don't have one, you can skip this step and just execute option A.
+
+Step 1 - Preparing the system
+Start by spinning up a VPS in your desired Vultr zone. A 1024 MB VPS will be enough, as Guacamole is not that demanding.
+
+Enabling the private IP
+Start by enabling the private network on the VPS. This is well-documented here
+
+Preparing the firewall
+First let’s harden the image a little bit. And let’s check if the image that has been provisioned has ufw enabled.
+
+root@vultr:~# ufw status
+Status: inactive
+By default it's disabled, so we will need to add a few rules.
+
+Rule 1: ssh: TCP port 22
+Rule 2: http: TCP port 8080 (temporary testing rule for Guacamole)
+Let's start with configuring these ports.
+
+ufw allow 22/tcp
+ufw allow 8080/tcp
+Next enable the firewall.
+
+ufw enable
+Don't worry if you receive a warning. If you added port 22, you will not face any issues.
+
+root@vultr:~# ufw enable
+Command may disrupt existing ssh connections. Proceed with operation (y|n)? y
+Firewall is active and enabled on system startup
+Once enabled, request the status of the firewall and we will see our port configuration.
+
+ufw status
+Status: active
+
+To                         Action      From
+--                         ------      ----
+22/tcp                     ALLOW       Anywhere
+8080/tcp                   ALLOW       Anywhere
+22/tcp (v6)                ALLOW       Anywhere (v6)
+8080/tcp (v6)              ALLOW       Anywhere (v6)
+Step 2 - Installing Guacamole
+Installing all dependencies
+Before we start installing we need to update and upgrade the repo. With packages such as Tomcat, which is Java based, there is a constant stream of discovered bugs and their associated bugfixes. It is usually a good idea to do this first instead of rushing directly into our installation.
+
+apt-get update
+apt-get -y upgrade 
+Next up is all the dependencies. Guacamole has quite a few of them. (A full list of dependencies and their function can be found here). Let's continue by installing all of them.
+
+apt-get -y install build-essential tomcat8 freerdp libcairo2-dev libjpeg-turbo8-dev libpng12-dev libossp-uuid-dev libavcodec-dev libavutil-dev libfreerdp-dev libpango1.0-dev libssh2-1-dev libtelnet-dev libvorbis-dev libwebp-dev mysql-server mysql-client mysql-common mysql-utilities libswscale-dev libvncserver-dev libpulse-dev libssl-dev
+When the installer asks for a MySQL root password, provide one and be sure to take note of it. We will be using this password later on to create the Guacamole database.
+
+Downloading Guacamole
+Now that we have all of our dependencies, we can continue with downloading Guacamole. Guacamole itself comes mostly in a source form, and not a binary. First we will move to the /tmp folder to avoid cluttering other parts of the disk. Then download all of the source code.
+
+There are four source/binary files to download:
+
+guacamole-0.9.13-incubating.war: This is the web application. A WAR file is a zipped web package providing a single website hosted on a Tomcat website
+guacamole-server-0.9.13-incubating.tar.gz: This file will provide the backend guacd application. This creates the streams through RDP and SSH.
+guacamole-auth-jdbc-0.9.13-incubating.tar.gz: We will be using a local MySQL database, so we need the associated JDBC connector.
+mysql-connector-java-5.1.43.tar.gz: Without a database driver the JDBC connector does nothing. This file is provided by the MySQL team themselves.
+Note: downloads resolved to the closest server.
+
+cd /tmp
+wget http://apache.belnet.be/incubator/guacamole/0.9.13-incubating/binary/guacamole-0.9.13-incubating.war
+wget http://apache.cu.be/incubator/guacamole/0.9.13-incubating/source/guacamole-server-0.9.13-incubating.tar.gz
+wget http://apache.cu.be/incubator/guacamole/0.9.13-incubating/binary/guacamole-auth-jdbc-0.9.13-incubating.tar.gz
+wget https://dev.mysql.com/get/Downloads/Connector-J/mysql-connector-java-5.1.43.tar.gz
+Once we have downloaded all these files, extract the tar.gz's.
+
+tar -xzvf guacamole-server-0.9.13-incubating.tar.gz
+tar -xzvf guacamole-auth-jdbc-0.9.13-incubating.tar.gz
+tar -xzvf mysql-connector-java-5.1.43.tar.gz
+Compiling Guacamole
+Now that we have extracted all of the source code, let's make a few guacamole folders, these will be used by the guacamole application and its dependencies.
+
+mkdir -p /etc/guacamole/lib
+mkdir -p /etc/guacamole/extensions
+Everything is ready for our new Guacamole binaries. We can now start the compilation and installation process. Move over to the extracted Guacamole Server folder.
+
+cd /tmp/guacamole-server-0.9.13-incubating
+Configure the application to also create an init.d file for running it as a service later on.
+
+./configure --with-init-dir=/etc/init.d
+The command should end with a 'yes' on all libraries and protocols. If not, go back and check the apt-get command to make sure you didn't miss any package.
+
+------------------------------------------------
+guacamole-server version 0.9.13-incubating
+------------------------------------------------
+
+   Library status:
+
+     freerdp ............. yes
+     pango ............... yes
+     libavcodec .......... yes
+     libavutil ........... yes
+     libssh2 ............. yes
+     libssl .............. yes
+     libswscale .......... yes
+     libtelnet ........... yes
+     libVNCServer ........ yes
+     libvorbis ........... yes
+     libpulse ............ yes
+     libwebp ............. yes
+
+   Protocol support:
+
+      RDP ....... yes
+      SSH ....... yes
+      Telnet .... yes
+      VNC ....... yes
+
+   Services / tools:
+
+      guacd ...... yes
+      guacenc .... yes
+
+   Init scripts: /etc/init.d
+
+Type "make" to compile guacamole-server.
+Next up compile and install the Gucamole server.
+
+make && make install
+Once this all is done, run ldconfig to rebuild the search path for libraries that have been added.
+
+ldconfig
+Proceed by using systemctl to setup guacd (Guacamole Daemon) to start on boot.
+
+systemctl enable guacd
+Guacamole binaries are now installed. Now we will get the web application ready for Tomcat.
+
+Start by moving the war file to the guacamole folder we just created, once this is done create a logical link in the tomcat directory to point to our war file.
+
+cd /tmp
+mv guacamole-0.9.13-incubating.war /etc/guacamole/guacamole.war
+ln -s /etc/guacamole/guacamole.war /var/lib/tomcat8/webapps/
+Then we need the mysql connector and JDBC. The JDBC driver is needed in the extensions folder, the connector in the lib folder.
+
+cp mysql-connector-java-5.1.43/mysql-connector-java-5.1.43-bin.jar /etc/guacamole/lib/
+cp guacamole-auth-jdbc-0.9.13-incubating/mysql/guacamole-auth-jdbc-mysql-0.9.13-incubating.jar /etc/guacamole/extensions/
+Configuring Guacamole and Tomcat
+Once the connector and JDBC are in place, we need to edit the tocamt8 file. This file contains a lot of tomcat8 settings, and in our case we need to add the GUACAMOLE_HOME variable at the end of the file.
+
+nano /etc/default/tomcat8
+Append with the following.
+
+GUACAMOLE_HOME=/etc/guacamole
+Creating the database
+Next up is creating the database. Guacamole stores its connection configuration in a database, not inside a file.
+
+Login with the root password you used during the installation.
+
+mysql -u root -p
+The first step is to create a database called 'guacamole_db'.
+
+create database guacamole_db;
+Then run the create user command. This will create a user with a password mysupersecretpassword, this user will only be able to connect from localhost.
+
+create user 'guacamole_user'@'localhost' identified by "mysupersecretpassword";
+Grant CRUD operations to this user for the database guacamole_db.
+
+GRANT SELECT,INSERT,UPDATE,DELETE ON guacamole_db.* TO 'guacamole_user'@'localhost';
+Flush privileges and exit the shell.
+
+flush privileges;
+exit
+Finish up by adding the Guacamole schema to our newly created database.
+
+cat /tmp/guacamole-auth-jdbc-0.9.13-incubating/mysql/schema/*.sql | mysql -u root -p guacamole_db
+Once this is done, we need to edit the guacamole.properties file. This file contains our recently created MySQL server configuration.
+
+nano /etc/guacamole/guacamole.properties
+Append the MySQL connection details and credentials.
+
+mysql-hostname: localhost
+mysql-port: 3306
+mysql-database: guacamole_db
+mysql-username: guacamole_user
+mysql-password: mysupersecretpassword
+Finish up by creating a symbolic link to the tomcat share folder, as this is where the WAR file will search these properties.
+
+ln -s /etc/guacamole /usr/share/tomcat8/.guacamole
+Testing the setup
+End by restarting the tomcat8 server and start the guacd server daemon.
+
+service tomcat8 restart
+service guacd start
+You can verify by using the status command.
+
+service tomcat8 status
+service guacd status
+Now you can browse to your VPS on port 8080
+
+http://<yourpublicip>:8080/guacamole/
+Use the username guacadmin and the same password guacadmin. This will grant you access to an empty Guacamole server.
+
+Click in the top right corner on your username guacadmin and select Settings. Once you are in the settings page go to the Users tab and select the user guacadmin.
+
+Now change your password to something else or create a new admin user and delete the default guacadmin one.
+
+Step 3 - Fine tuning and cleanup
+These are the final steps: cleaning up after you are done.
+
+Delete the downloaded source code and binaries from the /tmp folder.
+
+rm -rf /tmp/guacamole-*
+rm -rf /tmp/mysql-connector-java-*
+Also, make the Guacamole web application the default one. In the tomcat ecosystem the application that gets the ROOT folder is the one that is started by default when you access the website.
+
+Delete the old ROOT placeholder.
+
+rm -rf /var/lib/tomcat8/webapps/ROOT
+And make a symbolic link for the guacamole server to be the ROOT one.
+
+ln -s /var/lib/tomcat8/webapps/guacamole /var/lib/tomcat8/webapps/ROOT
+This requires a tomcat restart.
+
+service tomcat8 restart
+Step 4 (option A) - Running on HTTP only
+If you are not going to use Let's Encrypt certificates and not use a DNS, execute the actions in this step and afterwards go directly to Step 6. - Option A
+If you want to create a more secure site and you have a DNS ready, you can skip this and go straight to option B (Step 5).
+Edit the tomcat8/server.xml file and change the connector port.
+
+nano /etc/tomcat8/server.xml
+Search for the Connector port.
+
+<Connector port="8080" protocol="HTTP/1.1"
+           connectionTimeout="20000"
+           URIEncoding="UTF-8"
+           redirectPort="8443" />
+And replace 8080 with 80.
+
+By default, tomcat doesn't allow the binding of ports below 1024. To enable this we need to tell tomcat8 to create authenticated binds.
+
+Edit the default file of tomcat8 and uncomment the AUTHBIND line and use the option yes
+
+nano /etc/default/tomcat8
+AUTHBIND=yes
+Once this is done, intall authbind.
+
+apt-get install authbind
+Configure it so that port 80 can be claimed by tomcat8.
+
+touch /etc/authbind/byport/80
+chmod 500 /etc/authbind/byport/80
+chown tomcat8 /etc/authbind/byport/80
+Allow port 80 through the firewall and delete the rule for 8080.
+
+ufw allow 80/tcp
+ufw delete allow 8080/tcp
+Restart tomcat.
+
+service tomcat8 restart
+That's it, now Guacamole should be running on port 80.
+
+Step 5 (option B) - Setting up Nginx
+Installation and configuration of Nginx
+Tomcat really isn't one of the best and most robust applications to use with certbot. Luckily Nginx is. We will just to proxy tomcat to Nginx. It uses the out-of-the-box functionality of certbot at the cost of sacrificing a little bit of RAM.
+
+apt-get install nginx
+Once installed, edit the default configuration.
+
+nano /etc/nginx/sites-available/default
+Delete all example configurations and add the following configuration.
+
+server {      
+  listen 0.0.0.0:80;
+
+  proxy_request_buffering off;
+  proxy_buffering off;
+
+  location / {
+     proxy_pass http://127.0.0.1:8080;
+     proxy_redirect     off;
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Host $server_name;
+  }
+}
+This will create a proxy for the website running at 8080. Restart Nginx, and enable it at boot.
+
+systemctl restart nginx
+systemctl enable nginx
+Check if everything is working.
+
+systemctl status nginx
+Disable the testing port 8080 and allow traffic on port 80.
+
+ufw allow 80/tcp
+ufw delete allow 8080/tcp
+Installing Let's Encrypt
+Before we can use certbot, we need to add the correct ppa to the system containing our certbot packages.
+
+add-apt-repository ppa:certbot/certbot
+Press "ENTER" to accept the configuration change.
+
+Update apt to gather the new packages.
+
+apt-get update
+Finally, install the Nginx module for assigning the certificates.
+
+apt-get -y install python-certbot-nginx
+Configure Nginx to use certificates
+Configure the firewall to allow HTTPS.
+
+ufw allow 443/tcp
+Before we can request new certificates, we need a DNS name.
+
+nano /etc/nginx/sites-available/default
+Add the following server_name setting.
+
+server_name rdp.example.com;
+Change the configuration to reflect this new setting.
+
+server {
+  server_name rdp.example.com;
+
+  listen 0.0.0.0:80;
+
+  proxy_request_buffering off;
+  proxy_buffering off;
+
+  location / {
+     proxy_pass http://127.0.0.1:8080;
+     proxy_redirect     off;
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Host $server_name;
+  }
+}
+Check if all is working and restart Nginx.
+
+nginx -t
+service nginx restart
+Now request a certificate with certbot.
+
+certbot --nginx -d rdp.example.com
+Provide your email and agree to the questions asked by the installer. (You can safely choose "No" to sharing your email.) Certbot will automatically ask what it needs to do with HTTPS. We will be using option 2: redirect to HTTPS.
+
+Please choose whether or not to redirect HTTP traffic to HTTPS, removing HTTP access.
+-------------------------------------------------------------------------------
+1: No redirect - Make no further changes to the webserver configuration.
+2: Redirect - Make all requests redirect to secure HTTPS access. Choose this for
+new sites, or if you're confident your site works on HTTPS. You can undo this
+change by editing your web server's configuration.
+-------------------------------------------------------------------------------
+Select the appropriate number [1-2] then [enter] (press 'c' to cancel): 2
+The last thing we will be doing is updating the DH parameters. These are, by default, a little bit weak for 2017 standards.
+
+Create some new ones.
+
+openssl dhparam -out /etc/ssl/certs/dhparam.pem 2048
+Next, add them to the default site in Nginx.
+
+nano /etc/nginx/sites-available/default
+Add them to the server configuration.
+
+server {
+  server_name rdp.example.com;
+
+  listen 0.0.0.0:80;
+  ssl_dhparam /etc/ssl/certs/dhparam.pem;
+
+  proxy_request_buffering off;
+  proxy_buffering off;
+
+  location / {
+     proxy_pass http://127.0.0.1:8080;
+     proxy_redirect     off;
+        proxy_set_header   Host $host;
+        proxy_set_header   X-Real-IP $remote_addr;
+        proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Host $server_name;
+  }
+}
+Check for errors.
+
+nginx -t
+Apply the changes by restarting the server.
+
+service nginx restart
+Cleanup the old 8080 rule
+
+ufw delete allow 8080/tcp
+Note: if you should recieve a "502 Bad Gateway" you will need restart tomcat8.
+
+service tomcat8 restart
+Auto renew certificates
+Let's Encrypt certificates require renewal. We can create a cron job for this. Start by editing the crontab.
+
+crontab -e
+Add the following line.
+
+00 2 * * * /usr/bin/certbot renew --quiet
+This will check at 2:00 AM if any certificates require a renewal and will renew them if they do.
+
+Step 6 - Testing it all out
+Go to your Guacamole server (either http://<ip>/ or https://rdp.example.com)).
+
+For this test, you will need two more instances: one Linux VM and another Windows Server 2012 R2 with a private IP enabled on both.
+
+Adding the Windows RDP connection
+Click the "username" on the top right corner and go to "Settings". Then go to "Connections" and select "New Connection".
+
+Fill in following settings (you can leave the others default).
+
+Name: Windows Server 2012 R2
+Location: ROOT
+Protocol: RDP
+Maximum number of connections: 1
+Maximum number of connections per user: 1
+Parameters > Hostname: 10.99.0.12
+Parameters > Port: 3389
+Username: Administrator
+Password: <password> (provided by Vultr)
+Security mode: Any
+Ignore server certificate: <checked>
+Press "save" and go back to the home screen. Now you can click on the "Windows Server 2012 R2" connection and it will RDP to this machine.
+
+Adding the Linux SSH connection
+Press "Ctrl+Shift+Alt". This will pop out the menu on the side. Here you can disconnect or perform other administrative tasks for Guacamole.
+
+Click the username on the top in the menu and go to "Settings". Then go to the "Connections" tab and select "New Connection".
+
+Fill in following settings (you can leave the others default).
+
+Name: Linux
+Location: ROOT
+Protocol: SSH
+Maximum number of connections: 5
+Maximum number of connections per user: 2
+Parameters > Hostname: 10.99.0.11
+Parameters > Port: 22
+Username: root
+Password: <password> (provided by Vultr)
+Press "save" and go back to the home screen. Now you can click this newly created connection and be connected to your Linux server via SSH.
+
+Conclusion
+You now have a web RDP/SSH HTML5 gateway. Now you can firewall the public RDP and SSH access of your platform and access your environment from any modern browser. For more information on what Guacamole can offer, there is a great video showing all of the possiblities of the platform here.
