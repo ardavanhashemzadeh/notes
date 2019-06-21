@@ -1,5 +1,8 @@
 # notes
 
+# Remote App without joining a domain
+https://ryanmangansitblog.com/2013/10/30/deploying-a-rdsh-server-in-a-workgroup-rds-2012-r2/
+
 # MySQL CREATE VIEW
 When UNIONing multiple SELECTs don't try to ORDER BY until the end
 
