@@ -1,5 +1,9 @@
 # notes
 
+# Deleting AzureAD Domain
+A guest user (not native to the domain) cannot delete the domain, and the portal's error is misleading (it complains about enterprise applications, not about the guest user) 
+It will take upto and beyond 90 days for the onmicrosoft.com domain name to be released 
+
 # Remote App without joining a domain
 https://ryanmangansitblog.com/2013/10/30/deploying-a-rdsh-server-in-a-workgroup-rds-2012-r2/
 
