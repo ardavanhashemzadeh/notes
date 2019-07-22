@@ -1,9 +1,9 @@
 # notes
 
 # Reset group policy objects from command line
-RD /S /Q "%WinDir%\System32\GroupPolicyUsers" 
-RD /S /Q "%WinDir%\System32\GroupPolicy" 
-gpupdate /force 
+RD /S /Q "%WinDir%\System32\GroupPolicyUsers"  
+RD /S /Q "%WinDir%\System32\GroupPolicy"  
+gpupdate /force  
 
 # Reset security policy from command line
 secedit /configure /cfg %windir%\inf\defltbase.inf /db defltbase.sdb /verbose 
