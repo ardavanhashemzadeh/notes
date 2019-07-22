@@ -1,5 +1,13 @@
 # notes
 
+# Reset group policy objects from command line
+RD /S /Q "%WinDir%\System32\GroupPolicyUsers" 
+RD /S /Q "%WinDir%\System32\GroupPolicy" 
+gpupdate /force 
+
+# Reset security policy from command line
+secedit /configure /cfg %windir%\inf\defltbase.inf /db defltbase.sdb /verbose 
+
 # Deleting AzureAD Domain
 A guest user (not native to the domain) cannot delete the domain, and the portal's error is misleading (it complains about enterprise applications, not about the guest user) 
 It will take upto and beyond 90 days for the onmicrosoft.com domain name to be released 
