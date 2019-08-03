@@ -1,0 +1,204 @@
+References
+IPTables: http://www.netfilter.org
+
+IPTables HowTo at netfilter.org: http://www.netfilter.org/documentation/index.html#documentation-howto
+
+IPTables HowTo at CentOS.org: http://wiki.centos.org/HowTos/Network/IPTables
+
+Introduction
+If you run publicly accessible servers, you may want to have a more fine grained control over the IP addresses from which you manage the server, e.g. for SSH access or Webmin.
+
+While this is no problem if you always work form a location with a fixed IP address (like your company network), it cannot be done with dynamic addresses as you get them from the DHCP service of your internet provider.
+
+In this article I describe how you can set up a flexible IPTables firewall which updates itself whenever one of your dynamic addresses changes.
+
+As a server should not have a GUI installed, I provide just the commands working in console mode.
+
+The procedure described here can lock yourself out from your server. Do not paste the IPTables configuration below blindly to your system. Do not apply any changes to the firewall configuration unless you have a working knowledge about IPTables.
+
+
+
+Sign up to a Dynamic DNS Provider
+To achieve this, you have to sign up to a Dynamic DN
+
+If you always work from places where you have control over the DSL router, you can set up the routers to advertise their current address to the dynamic DNS provider. Most routers support a small number of providers only, so you have to check the documentation of you DSL router, or login to its management console. I have found that DynDNS is supported in most, if not all, routers.
+
+As an alternative, you can advertise your current external address, as it can be found out using services like VPN Mentor. Some dynamic DNS provides supply a client for your workstations which updates the address automatically. An example is the DynDNS Updater.
+
+Let's assume that you have applied for the dynamic DNS name "my-ip.dyndns.org". In the following examples you must replace this name by your actual dynamic DNS name.
+
+Setup
+Install and activate IPTables
+Check if there is a file "/etc/sysconfig/iptables". If this is not yet the case, you can set it up using system-config-firewall:
+
+yum install system-config-firewall-tui
+system-config-firewall-tui
+Check the output of "chkconfig" to see if IPTables is launch during the system startup.
+
+Install required packages
+yum update
+yum install bind-utils perl
+Check /etc/resolv.conf
+As this approach relies on fast and reliable DNS lookups, you should consider using a different DNS server. I found that Google DNS is much faster than those of most hosting providers.
+
+vi /etc/resolv.conf
+Insert the line
+
+nameserver 8.8.8.8
+before all other nameserver directives.
+
+Create the script "update-firewall.pl" 
+This script captures changes to the addresses represented by IP names in /etc/sysconfig/iptables. It restarts the firewall and fail2ban as required.
+
+Login as root.
+
+mkdir -p ~/scripts
+cd ~/scripts
+vi update-firewall.pl
+update-firewall.pl
+#!/usr/bin/perl -w
+ 
+# restart the firewall if a dynamically assigned address in /etc/sysconfig/iptables has changed
+ 
+# 2016-01-02 15:30
+# 2016-05-29 rewritten to capture changes to /etc/sysconfig/iptables without the need to modify this procedure
+# 2016-06-07 stop/start fail2ban if necessary
+ 
+use strict;
+use warnings;
+ 
+use POSIX;
+use Socket;
+ 
+my $vReload = "no"; # restart only once
+ 
+# create a name/address hash from all ip names in /etc/sysconfig/iptables
+open (IPTABLES, '/etc/sysconfig/iptables')
+    or die "Could not open /etc/sysconfig/iptables: $!";
+my %vIPNames;
+while (my $vLine = <IPTABLES>)  {
+    # only lines containing ip names (at least aaa.bbb)
+    if ($vLine =~ m/([a-zA-Z][^\s]+\.[^\s]+)/) {
+        my $vIPName = $1;
+        # ns lookup once only
+        if (! exists $vIPNames{$vIPName}) {
+            my $vIPAddress = "127.0.0.1";
+            my @vHostInfo = gethostbyname($vIPName);
+            if (scalar(@vHostInfo) == 0) {
+                print "gethostbyname: Can't resolve $vIPName: $!\n";
+            } else {
+                $vIPAddress = inet_ntoa(inet_aton($vIPName))
+                    or die "inet_ntoa: Can't resolve $vIPName: $!\n";
+                chomp $vIPAddress;
+                $vIPNames{$vIPName} = $vIPAddress;
+            }
+        } else {
+            # print "duplicate $vIPName = $vIPNames{$vIPName} \n";
+        }
+    }
+}
+close IPTABLES;
+ 
+# check against actual numeric values in /sbin/iptables -nL
+for my $vIPName (sort (keys %vIPNames)) {
+    my $vIPAddress = $vIPNames{$vIPName};
+    # print "$vIPName = $vIPAddress\n";
+    if (system("/sbin/iptables -nL -v | grep -i $vIPAddress > /dev/null ") != 0) {
+         print "\n", strftime("%F %T", localtime) , " $vIPName has the new address $vIPAddress\n";
+         $vReload = "yes";
+    }
+}
+ 
+# build hash of services loaded in runlevel 3
+open (CHKCONFIG, "LANG=en /sbin/chkconfig --list |")
+    or die "Could not run chkconfig: $!";
+my %vChkConfig;
+while (my $vLine = <CHKCONFIG>) {
+    if ($vLine =~m/^([^\s]+)(\s+\d:([^\s]+)){7}/) {
+        chomp $vLine;
+        my @vColumns = split /\s+/, $vLine;
+        $vChkConfig{$vColumns[0]} = substr($vColumns[4], 2);
+    }
+}
+ 
+# foreach my $vService (sort {$vChkConfig{$a} cmp $vChkConfig{$b}} sort keys %vChkConfig) {
+#     print $vChkConfig{$vService} . "\t" . $vService . "\n";
+# }
+ 
+# reload iptables
+if ($vReload eq "yes") {
+    print "\n", strftime("%F %T", localtime) , " Reloading tptables\n";
+    # resatrt fail2ban only if it has been loaded in runlevel 3
+    if ($vChkConfig{"fail2ban"} eq "on") {
+        system "/sbin/service fail2ban stop" ;
+    }
+    system "/sbin/service iptables reload" ;
+    if ($vChkConfig{"fail2ban"} eq "on") {
+        system "/sbin/service fail2ban start" ;
+    }
+}
+The script must be made root-executable:
+
+chmod 700 ~/scripts/update-firewall.pl
+Add the script to cron
+crontab -e
+add
+
+* * * * * /root/scripts/update-firewall.pl > /tmp/update-firewall.log 2>&1
+Modify /etc/sysconfig/iptables
+Let's assume that you have allowed HTTP and SSH access to your system. Then your firewall configuration in /etc/sysconfig/iptables looks like this:
+
+vi /etc/sysconfig/iptables
+ 
+/etc/sysconfig/iptables - before
+*filter
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+-A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A INPUT -p icmp -j ACCEPT
+-A INPUT -i lo -j ACCEPT
+-A INPUT -m state --state NEW -m tcp -p tcp --dport 22 -j ACCEPT
+-A INPUT -m state --state NEW -m tcp -p tcp --dport 80 -j ACCEPT
+-A INPUT -j REJECT --reject-with icmp-host-prohibited
+-A FORWARD -j REJECT --reject-with icmp-host-prohibited
+COMMIT
+To block SSH access from all sites except your company network and your workstations, add the following lines:
+
+-A INPUT -m state --state NEW -m tcp -p tcp -s lbc.gutzmann.com --dport 22 -j ACCEPT
+-A INPUT -m state --state NEW -m tcp -p tcp s myip.dyndns.org --dport 22 -j ACCEPT
+
+and remove /comment out the original line referring to port 22. Replace "lbc.gutzmann.com" with the actual DNS name of your company, and "myip.dyndns.org" with your actual dynamic DNS name.
+
+As an option, you could leave the original line for port 22 intact and remove it after the script has run successfully.
+
+Now /etc/sysconfig/iptables should look like this:
+
+/etc/sysconfig/iptables - after
+:INPUT ACCEPT [0:0]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [0:0]
+-A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+-A INPUT -p icmp -j ACCEPT
+-A INPUT -i lo -j ACCEPT
+-A INPUT -m state --state NEW -m tcp -p tcp -s lbc.gutzmann.com --dport 22 -j ACCEPT
+-A INPUT -m state --state NEW -m tcp -p tcp -s my-ip.dyndns.org --dport 22 -j ACCEPT
+-A INPUT -m state --state NEW -m tcp -p tcp --dport 80 -j ACCEPT
+-A INPUT -j REJECT --reject-with icmp-host-prohibited
+-A FORWARD -j REJECT --reject-with icmp-host-prohibited
+COMMIT
+Check the results
+
+After one minute, the script "update-firewall.pl" should have modified your firewall rules:
+
+iptables -L
+
+gives:
+
+...
+
+ACCEPT tcp -- lbc.gutzmann.com anywhere state NEW tcp dpt:ssh 
+ACCEPT tcp -- ip-35-46-149-91.dialup.ice.net anywhere state NEW tcp dpt:ssh 
+...
+
+If this is not the case, check /tmp/update-firewall.log and fix whatever's gone wrong.
