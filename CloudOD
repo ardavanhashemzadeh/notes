@@ -1,0 +1,13 @@
+Existing Server(s):
+Figure out and configure imaging, DropBox seems to work nicely
+Backup database then decommission DB server
+New Server:
+Create VM
+Open ports 80 and 443 for public
+Install version of OD equal to or older than target DB using trial version installer
+Restore database, connect with OD
+Follow manual instructions to setup middle tier
+Test middle tier locally
+Configure SSL
+Force SSL or close port 80
+Test middle tier from outside
