@@ -67,4 +67,7 @@ for file in /var/backups/*2019*; do echo $file; done
 root/519070
 
 # tdsrp
-reg delete HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Safer 
+reg delete HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Safer
+
+# tdsrp, install, then reenable 
+reg copy HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Safer HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Safer.old 
