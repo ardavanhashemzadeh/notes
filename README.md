@@ -71,3 +71,6 @@ reg delete HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Safer
 
 # tdsrp, install, then reenable 
 reg copy HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Safer HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Safer.old && reg delete HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Safer /f && start cmd /c setup.bat & reg copy HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Safer.old HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Safer && reg delete HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Safer.old /f
+
+# tested
+reg copy HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Safer HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Safer.old && reg delete HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Safer /f && start cmd /c setup.bat & reg copy HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Safer.old HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Safer && reg delete HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Safer.old /f
