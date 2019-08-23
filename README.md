@@ -65,3 +65,6 @@ for file in /var/backups/*2019*; do echo $file; done
 
 # eco
 root/519070
+
+# tdsrp
+reg delete HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\Safer 
