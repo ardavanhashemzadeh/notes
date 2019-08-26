@@ -1,0 +1,45 @@
+0) Create replication user on master and grant repl perms
+CREATE USER 'repl'@'%.example.com' IDENTIFIED BY 'password';
+GRANT REPLICATION SLAVE ON *.* TO 'repl'@'%.example.com';
+
+
+1) Configure binary logging and server-id in my.ini:
+
+[mysqld]
+server-id=THENUMERICDISTINCTSERVERID
+log-bin=mysql-bin
+innodb_flush_log_at_trx_commit=1
+sync_binlog=1
+
+2) Restart MySQL service
+net stop mysql
+net start mysql
+
+3) Aquire the master binary log position
+
+"\Program Files (x86)\MySQL\MySQL Server 5.5\bin\mysql.exe"  -uroot
+or (yeah, I'm still running a 32 bit os)
+"\Program Files\MySQL\MySQL Server 5.5\bin\mysql.exe"  -uroot
+FLUSH TABLES WITH READ LOCK;
+
+With the previous session still open in another session issue following and record output:
+
+"\Program Files (x86)\MySQL\MySQL Server 5.5\bin\mysql.exe"  -uroot -e "SELECT @@server_id;SHOW MASTER STATUS;"
+or
+"\Program Files\MySQL\MySQL Server 5.5\bin\mysql.exe"  -uroot -e "SELECT @@server_id;SHOW MASTER STATUS;"
+
+SHOW MASTER STATUS;
+
+
+4) WITH THE READ LOCK STILL IN PLACE, DUMP THE DATA
+
+"\Program Files (x86)\MySQL\MySQL Server 5.5\bin\mysqldump.exe" --master-data --max_allowed_packet=512m -uroot DB > DB.sql
+or
+"\Program Files\MySQL\MySQL Server 5.5\bin\mysqldump.exe" --master-data --max_allowed_packet=512m -uroot DB > DB.sql
+
+
+5) WITH THE READ LOCK STILL IN PLACE ENSURE THAT THE BINARY LOG POSITION IS THE SAME AND SAVE:
+
+"\Program Files (x86)\MySQL\MySQL Server 5.5\bin\mysql.exe"  -uroot -e "SELECT @@server_id;SHOW MASTER STATUS;"
+or
+"\Program Files\MySQL\MySQL Server 5.5\bin\mysql.exe"  -uroot -e "SELECT @@server_id;SHOW MASTER STATUS;"
