@@ -1,5 +1,8 @@
 # notes
 
+# OpenDental Central Manager  
+Possible problem with syncing: UserNum and UserNumCEMT are both populated  
+
 # Reset group policy objects from command line
 RD /S /Q "%WinDir%\System32\GroupPolicyUsers"  
 RD /S /Q "%WinDir%\System32\GroupPolicy"  
