@@ -1,1 +1,13 @@
+Release lock on master
+UNLOCK TABLES;
 
+add a server-id to the slave (each server must have its own ID)
+server-id=NUMBER
+
+CHANGE MASTER TO
+  MASTER_HOST='',
+  MASTER_USER='REPLUSERNAME',
+  MASTER_PASSWORD='REPLUSERPASS',
+  MASTER_LOG_FILE='LOGFILENAME',
+  MASTER_LOG_POS=LOGPOSITION,
+  FOR CHANNEL 'CHANNELNAME';
